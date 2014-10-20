@@ -1,6 +1,7 @@
 from pandas import Series, DataFrame
 import pandas as pd
 import os
+#import matplotlib.pyplot as plt
 
 def getStocks():
     #Function reads SnP100.txt and get list of companies
@@ -42,8 +43,8 @@ def applyStrategy(quotes, bank, name, newYearIndex, resultsFile):
                 bankSpent = sharesBought * quotes.AdjClose[n]
                 shares = shares + sharesBought
                 bank = bank - bankSpent
-                #if sharesBought:
-                #    print '%s: Bought %d AAPL shares at %.2f per share.  Spent %d.  Bank has %.2f.  Currently %d shares.' % (quotes.Date[n], sharesBought, quotes.AdjClose[n], bankSpent, bank, shares)
+                if sharesBought:
+                    print '%s: Bought %d %s shares at %.2f per share.  Spent %d.  Bank has %.2f.  Currently %d shares.' % (quotes.Date[n], sharesBought, stock, quotes.AdjClose[n], bankSpent, bank, shares)
             else:
                 sell = int(shares)
                 shares = shares - sell
@@ -51,8 +52,8 @@ def applyStrategy(quotes, bank, name, newYearIndex, resultsFile):
                     print 'something wrong!'
                 sharesSold = sell * quotes.AdjClose[n]
                 bank = bank + sharesSold
-                #if sharesSold:
-                #    print '%s: Sold %d AAPL shares at %.2f per share.  Bank has: %.2f.  Currently %d shares.' % (quotes.Date[n], sell, quotes.AdjClose[n], bank, shares)
+                if sharesSold:
+                    print '%s: Sold %d %s shares at %.2f per share.  Bank has: %.2f.  Currently %d shares.' % (quotes.Date[n], sell, stock, quotes.AdjClose[n], bank, shares)
             
             totalBank = bank + (shares * quotes.AdjClose[n])
         performance = 100.0 * totalBank / startingBank
@@ -70,22 +71,41 @@ def applyStrategy(quotes, bank, name, newYearIndex, resultsFile):
 #Main():
 
 dataPath = os.getcwd() + '\SnP100Daily'     #Sub directory to store data
-createResultsFile = open('outputDailyResults.txt','w')
+createResultsFile = open('outputSingleResults.txt','w')
 createResultsFile.close()
 
-stocksToAnalyze = getStocks()   #Returns list of companies
+#PARAMETERS!!!!!!!!!!
+# stocksToAnalyze = getStocks()   #Returns list of companies
+# for stock in stocksToAnalyze[:20]:
+stock = 'AXP'       # Change to desired stock
+#!!!!!!!!!!
 
-for stock in stocksToAnalyze[:20]:
-    readFileName = 'output_' + stock + '.txt'
-    readLine = os.path.join(dataPath,readFileName)
-    quotes = pd.read_csv(readLine)
+readFileName = 'output_' + stock + '.txt'
+readLine = os.path.join(dataPath,readFileName)
+quotes = pd.read_csv(readLine)
 
-    breakLocation = getYearBreakLocation(quotes['Date'])
+#PARAMETERS!!!!!!!!!!
+#breakLocation = getYearBreakLocation(quotes['Date'])
+startIndex = 2780       #Look in CSV file to find start index for target year
+endIndex = 3030         #Use start of next year
 
-    initialInvestment = 50000
-    resultsFile = open('outputOverallResults.txt','a')
-    finalInvestment = applyStrategy(quotes, initialInvestment, stock, breakLocation, resultsFile)
+quotes = quotes[startIndex:endIndex]     # Trim data from start of target year to start of next year
+breakLocation = [startIndex,endIndex]
+year = quotes.Date[startIndex][:4]
+#!!!!!!!!!!
+
+initialInvestment = 50000
+resultsFile = open('outputSingleResults.txt','a')
+finalInvestment = applyStrategy(quotes, initialInvestment, stock, breakLocation, resultsFile)
     
-    print 'Invested in %s' % stock
+print 'Invested in %s' % stock
 
 resultsFile.close()
+
+##plotting
+df = DataFrame(quotes, columns = ('Date','AdjClose','MACDTrigger'))
+high = df.AdjClose.max()
+low = df.AdjClose.min()
+df.MACDTrigger = df.MACDTrigger * (high - low)
+df.MACDTrigger = df.MACDTrigger + low
+df.plot(title = ('%s MACD Triggers in %s' % (stock, year)))     #IF PLOT DOES NOT SHOW, RUN THIS AGAIN IN TERMINAL
